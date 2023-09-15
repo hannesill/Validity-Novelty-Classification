@@ -1,7 +1,7 @@
-from data.dataset import ValidityNoveltyClassificationDataset, ValidityNoveltyClassificationCollator
+from data.dataset import ValidityNoveltyClassificationDataset
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
 class TransformerDataset(Dataset):
