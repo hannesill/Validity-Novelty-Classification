@@ -33,8 +33,8 @@ if __name__ == "__main__":
     MAX_LENGTH = 200
     EPOCHS = 3
 
-    dataset_train = ValidityNoveltyClassificationDataset("../data/TaskA_train.csv")
-    dataset_valid = ValidityNoveltyClassificationDataset("../data/TaskA_dev.csv")
+    dataset_train = ValidityNoveltyClassificationDataset("data/TaskA_train.csv")
+    dataset_valid = ValidityNoveltyClassificationDataset("data/TaskA_dev.csv")
 
     # Preprocess the data
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
