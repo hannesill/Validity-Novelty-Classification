@@ -6,12 +6,13 @@ from torch.utils.data import Dataset, DataLoader
 
 class TransformerDataset(Dataset):
     def __init__(self, encodings, labels):
+        # Transform the encodings and labels to tensors
         self.encodings = encodings
         self.labels = labels
 
     def __getitem__(self, idx):
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = self.labels[idx]
+        item = {key: val[idx].to(device) for key, val in self.encodings.items()}
+        item['labels'] = self.labels[idx].to(device)
         return item
 
     def __len__(self):
@@ -19,6 +20,15 @@ class TransformerDataset(Dataset):
 
 
 if __name__ == "__main__":
+    # Set random seeds and device
+    torch.manual_seed(0)
+    torch.cuda.manual_seed(0)
+    torch.cuda.manual_seed_all(0)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Device:", device)
+
     # Hyperparameters
     MAX_LENGTH = 200
     EPOCHS = 3
@@ -39,6 +49,7 @@ if __name__ == "__main__":
         return_tensors="pt",
         verbose=False
     )
+
     encodings_valid = tokenizer(
         dataset_valid.sentences,
         add_special_tokens=True,
@@ -63,7 +74,7 @@ if __name__ == "__main__":
             logging_steps=10,
             evaluation_strategy="epoch"
         )
-        model = RobertaForSequenceClassification.from_pretrained("roberta-base")
+        model = RobertaForSequenceClassification.from_pretrained("roberta-base").to(device)
 
         # Convert the labels to tensors
         labels_train = torch.tensor(dataset_train.labels[task])
