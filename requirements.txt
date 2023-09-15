@@ -2,5 +2,5 @@ pandas~=1.5.3
 numpy~=1.23.5
 pathlib~=1.0.1
 loguru~=0.5.3
-transformers~=4.24.0
-torch~=1.10.1
+transformers~=4.32.1
+torch~=2.0.1
