@@ -23,10 +23,11 @@ class TransformerDataset(Dataset):
 
 
 def compute_metrics(p: EvalPrediction):
+    print("Compute metrics")
     preds = np.argmax(p.predictions, axis=1)
     return {
-        'accuracy': accuracy_score(p.label_ids, preds),
-        'f1': f1_score(p.label_ids, preds, average='weighted')
+        "accuracy": accuracy_score(p.label_ids, preds),
+        "f1": f1_score(p.label_ids, preds, average='weighted')
     }
 
 
@@ -130,6 +131,7 @@ if __name__ == "__main__":
 
         # Calculate and print the accuracy and F1 score
         results = trainer.evaluate(transformer_dataset_test)
+        print(results.keys())
         print(f"Accuracy for {task}:", results["accuracy"])
         print(f"F1 score for {task}:", results["f1"])
 
