@@ -68,7 +68,7 @@ if __name__ == "__main__":
     for task in ["validity", "novelty"]:
         # Create the model
         training_args = TrainingArguments(
-            output_dir="./results",
+            output_dir="results",
             num_train_epochs=EPOCHS,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
         # Save the model
         trainer.model.eval()
-        trainer.save_model(f"models/transformer_baseline_{task}_{timestamp}.pt")
+        trainer.save_model(f"models/transformer-baseline_{task}_{timestamp}.pt")
 
         # Test the model on the test set
         dataset_test = ValidityNoveltyClassificationDataset("data/TaskA_test.csv")
