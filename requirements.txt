@@ -6,3 +6,4 @@ transformers~=4.32.1
 torch~=2.0.1
 accelerate~=0.23.0
 scikit-learn~=1.2.2
+jupyter~=1.0.0
