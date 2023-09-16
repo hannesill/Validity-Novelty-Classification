@@ -26,7 +26,7 @@ def compute_metrics(p: EvalPrediction):
     preds = np.argmax(p.predictions, axis=1)
     return {
         "accuracy": accuracy_score(p.label_ids, preds),
-        "f1": f1_score(p.label_ids, preds, average='weighted')
+        "f1": f1_score(p.label_ids, preds, average='macro')
     }
 
 
