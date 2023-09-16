@@ -1,5 +1,5 @@
 import datetime
-
+from sklearn.metrics import f1_score, accuracy_score
 from data.dataset import ValidityNoveltyClassificationDataset
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments
 import torch
@@ -19,6 +19,14 @@ class TransformerDataset(Dataset):
 
     def __len__(self):
         return len(self.labels)
+
+
+def compute_metrics(p: transformers.EvalPrediction):
+    preds = np.argmax(p.predictions, axis=1)
+    return {
+        'accuracy': accuracy_score(p.label_ids, preds),
+        'f1': f1_score(p.label_ids, preds, average='weighted')
+    }
 
 
 if __name__ == "__main__":
@@ -91,6 +99,7 @@ if __name__ == "__main__":
         trainer = Trainer(
             model=model,
             args=training_args,
+            compute_metrics=compute_metrics,
             train_dataset=transformer_dataset_train,
             eval_dataset=transformer_dataset_valid
         )
@@ -118,6 +127,9 @@ if __name__ == "__main__":
         # Predict the labels
         transformer_dataset_test = TransformerDataset(encodings_test, torch.tensor(dataset_test.labels[task]))
 
-        # Print the F1 score
-        print(f"F1 score for {task}:", trainer.evaluate(transformer_dataset_test)["eval_f1"])
+        # Calculate and print the accuracy and F1 score
+        results = trainer.evaluate(transformer_dataset_test)
+        print(f"Accuracy for {task}:", results["accuracy"])
+        print(f"F1 score for {task}:", results["f1"])
+
 
