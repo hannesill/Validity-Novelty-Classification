@@ -1,9 +1,10 @@
 import datetime
 from sklearn.metrics import f1_score, accuracy_score
 from data.dataset import ValidityNoveltyClassificationDataset
-from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments
+from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments, EvalPrediction
 import torch
 from torch.utils.data import Dataset
+import numpy as np
 
 
 class TransformerDataset(Dataset):
@@ -21,7 +22,7 @@ class TransformerDataset(Dataset):
         return len(self.labels)
 
 
-def compute_metrics(p: transformers.EvalPrediction):
+def compute_metrics(p: EvalPrediction):
     preds = np.argmax(p.predictions, axis=1)
     return {
         'accuracy': accuracy_score(p.label_ids, preds),
