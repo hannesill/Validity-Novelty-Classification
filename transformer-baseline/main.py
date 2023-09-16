@@ -1,3 +1,5 @@
+import datetime
+
 from data.dataset import ValidityNoveltyClassificationDataset
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments
 import torch
@@ -28,6 +30,8 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = False
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Device:", device)
+
+    timestamp = datetime.datetime.now().strftime("%m%d-%H%M%S")
 
     # Hyperparameters
     MAX_LENGTH = 200
@@ -61,13 +65,13 @@ if __name__ == "__main__":
     )
 
     # Train two models, one for each task
-    for task in ["validity"]: # TODO: Add "novelty" later
+    for task in ["validity", "novelty"]:
         # Create the model
         training_args = TrainingArguments(
             output_dir="./results",
             num_train_epochs=EPOCHS,
-            per_device_train_batch_size=16,
-            per_device_eval_batch_size=16,
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
             warmup_steps=500,
             weight_decay=0.01,
             logging_dir="./logs",
@@ -92,3 +96,28 @@ if __name__ == "__main__":
         )
 
         trainer.train()
+
+        # Save the model
+        trainer.model.eval()
+        trainer.save_model(f"models/transformer_baseline_{task}_{timestamp}.pt")
+
+        # Test the model on the test set
+        dataset_test = ValidityNoveltyClassificationDataset("data/TaskA_test.csv")
+
+        # Encode the sentences
+        encodings_test = tokenizer(
+            dataset_test.sentences,
+            add_special_tokens=True,
+            truncation="longest_first",
+            padding="max_length",
+            max_length=MAX_LENGTH,
+            return_tensors="pt",
+            verbose=False
+        )
+
+        # Predict the labels
+        transformer_dataset_test = TransformerDataset(encodings_test, torch.tensor(dataset_test.labels[task]))
+
+        # Print the F1 score
+        print(f"F1 score for {task}:", trainer.evaluate(transformer_dataset_test)["eval_f1"])
+
