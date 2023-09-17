@@ -32,6 +32,9 @@ class ValidityNoveltyClassificationDataset(Dataset):
         validity_labels = []
         novelty_labels = []
         for entry in self.data:
+            # Skip the entry if the validity or novelty is 0
+            if entry["Validity"] == 0 or entry["Novelty"] == 0:
+                continue
             # Concatenate the topic, premise and conclusion with the special tokens
             sentence = f'{TOPIC_TOKEN} {entry["Topic"]} {PREMISE_TOKEN} {entry["Premise"]} {CONCLUSION_TOKEN} {entry["Conclusion"]}'
             self.sentences.append(sentence)
