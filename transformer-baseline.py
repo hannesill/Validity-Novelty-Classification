@@ -1,3 +1,4 @@
+import argparse
 import datetime
 from sklearn.metrics import f1_score, accuracy_score
 from data.dataset import ValidityNoveltyClassificationDataset
@@ -9,7 +10,6 @@ import numpy as np
 
 class TransformerDataset(Dataset):
     def __init__(self, encodings, labels):
-        # Transform the encodings and labels to tensors
         self.encodings = encodings
         self.labels = labels
 
@@ -31,6 +31,15 @@ def compute_metrics(p: EvalPrediction):
 
 
 if __name__ == "__main__":
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--epochs", type=int, default=3, help="Number of epochs to train the model")
+    args = parser.parse_args()
+
+    # Hyperparameters
+    MAX_LENGTH = 200
+    EPOCHS = args.epochs
+
     # Set random seeds and device
     torch.manual_seed(0)
     torch.cuda.manual_seed(0)
@@ -42,17 +51,17 @@ if __name__ == "__main__":
 
     timestamp = datetime.datetime.now().strftime("%m%d-%H%M%S")
 
-    # Hyperparameters
-    MAX_LENGTH = 200
-    EPOCHS = 3
-
+    print("Loading data...")
     dataset_train = ValidityNoveltyClassificationDataset("data/TaskA_train.csv")
     dataset_valid = ValidityNoveltyClassificationDataset("data/TaskA_dev.csv")
+    print("Train size:", len(dataset_train))
+    print("Valid size:", len(dataset_valid))
 
     # Preprocess the data
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
     # Encode the sentences
+    print("Encoding sentences...")
     encodings_train = tokenizer(
         dataset_train.sentences,
         add_special_tokens=True,
@@ -74,6 +83,7 @@ if __name__ == "__main__":
     )
 
     # Train two models, one for each task
+    print("Training models...")
     for task in ["validity", "novelty"]:
         # Create the model
         training_args = TrainingArguments(
@@ -81,7 +91,7 @@ if __name__ == "__main__":
             num_train_epochs=EPOCHS,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
-            warmup_steps=500,
+            warmup_steps=100,
             weight_decay=0.01,
             logging_dir="./logs",
             logging_steps=10,
@@ -97,6 +107,7 @@ if __name__ == "__main__":
         transformer_dataset_train = TransformerDataset(encodings_train, labels_train)
         transformer_dataset_valid = TransformerDataset(encodings_valid, labels_valid)
 
+        # Train the model
         trainer = Trainer(
             model=model,
             args=training_args,
