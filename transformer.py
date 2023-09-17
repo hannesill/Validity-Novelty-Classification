@@ -34,6 +34,7 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs to train the model")
+    parser.add_argument("--augment", action="store_true", help="Whether to augment the data or not")
     args = parser.parse_args()
 
     # Hyperparameters
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%m%d-%H%M%S")
 
     print("Loading data...")
-    dataset_train = ValidityNoveltyClassificationDataset("data/TaskA_train.csv")
+    dataset_train = ValidityNoveltyClassificationDataset("data/TaskA_train.csv", augment=args.augment)
     dataset_valid = ValidityNoveltyClassificationDataset("data/TaskA_dev.csv")
     print("Train size:", len(dataset_train))
     print("Valid size:", len(dataset_valid))

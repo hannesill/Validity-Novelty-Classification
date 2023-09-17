@@ -1,6 +1,78 @@
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
+import nltk
+from nltk.corpus import wordnet
+import random
+
+nltk.download('wordnet')
+
+
+def get_synonyms(word):
+    """Get synonyms of a word."""
+    synonyms = set()
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonym = lemma.name().replace("_", " ").replace("-", " ").lower()
+            synonym = "".join([char for char in synonym if char in ' qwertyuiopasdfghjklzxcvbnm'])
+            synonyms.add(synonym)
+    if word in synonyms:
+        synonyms.remove(word)
+    return list(synonyms)
+
+
+def synonym_replacement(words, n=1):
+    """Replace n words in the sentence with synonyms from WordNet."""
+    new_words = words.copy()
+    random_word_list = list(set([word for word in words if word.isalpha()]))
+    random.shuffle(random_word_list)
+    num_replaced = 0
+    for random_word in random_word_list:
+        synonyms = get_synonyms(random_word)
+        if len(synonyms) >= 1:
+            synonym = random.choice(synonyms)
+            new_words = [synonym if word == random_word else word for word in new_words]
+            num_replaced += 1
+        if num_replaced >= n:  # Only replace up to n words
+            break
+
+    return new_words
+
+
+def augment_data(sentences, labels):
+    # Split the sentences and labels by class
+    novel_sentences = [sentences[i] for i, lbl in enumerate(labels["novelty"]) if lbl == 1]
+    not_novel_sentences = [sentences[i] for i, lbl in enumerate(labels["novelty"]) if lbl == 0]
+
+    difference = len(not_novel_sentences) - len(novel_sentences)
+
+    augmented_sentences = []
+    augmented_labels = {
+        "validity": [],
+        "novelty": []
+    }
+
+    # Augment the novel sentences by the difference
+    for i in range(difference):
+        idx = i % len(novel_sentences)  # Use modulo to wrap around if difference > len(novel_sentences)
+        words = novel_sentences[idx].split()
+        new_sentence_words = synonym_replacement(words, n=1)
+        new_sentence = ' '.join(new_sentence_words)
+        augmented_sentences.append(new_sentence)
+
+        # Copy over the labels for augmented sentences
+        for label_type, label_values in labels.items():
+            augmented_labels[label_type].append(label_values[idx])
+
+    # Combine the original and augmented data
+    all_sentences = sentences + augmented_sentences
+    all_labels = {
+        "validity": labels["validity"] + augmented_labels["validity"],
+        "novelty": labels["novelty"] + augmented_labels["novelty"]
+    }
+
+    return all_sentences, all_labels
+
 
 PADDING_TOKEN = "<PAD>"
 UNKNOWN_TOKEN = "<UNK>"
@@ -10,7 +82,7 @@ CONCLUSION_TOKEN = "<CONCLUSION>"
 
 
 class ValidityNoveltyClassificationDataset(Dataset):
-    def __init__(self, file_name):
+    def __init__(self, file_name, augment=False):
 
         # Get the data from the csv file
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
@@ -47,6 +119,10 @@ class ValidityNoveltyClassificationDataset(Dataset):
             "validity": validity_labels,
             "novelty": novelty_labels
         }
+
+        # If augment is True augment the data
+        if augment:
+            self.sentences, self.labels = augment_data(self.sentences, self.labels)
 
         # Get the vocab
         self.vocab = self.get_vocab()
