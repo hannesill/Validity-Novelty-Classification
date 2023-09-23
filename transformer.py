@@ -54,6 +54,18 @@ if __name__ == "__main__":
 
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
+    training_args = TrainingArguments(
+        output_dir="results",
+        num_train_epochs=EPOCHS,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+        warmup_steps=100,
+        weight_decay=0.01,
+        logging_dir="./logs",
+        logging_steps=10,
+        evaluation_strategy="epoch"
+    )
+
     # Preprocess data and train models for each task separately
     print("Training models...")
     for task in ["Validity", "Novelty"]:
@@ -89,17 +101,6 @@ if __name__ == "__main__":
         )
 
         # Create the model
-        training_args = TrainingArguments(
-            output_dir="results",
-            num_train_epochs=EPOCHS,
-            per_device_train_batch_size=8,
-            per_device_eval_batch_size=8,
-            warmup_steps=100,
-            weight_decay=0.01,
-            logging_dir="./logs",
-            logging_steps=10,
-            evaluation_strategy="epoch"
-        )
         model = RobertaForSequenceClassification.from_pretrained("roberta-base").to(device)
 
         # Convert the labels to tensors
