@@ -1,4 +1,4 @@
-from data.dataset import ValidityNoveltyClassificationDataset, ValidityNoveltyClassificationCollator
+from data.dataset import ClassificationDataset, ClassificationCollator
 import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
@@ -107,9 +107,9 @@ if __name__ == "__main__":
 
     # Load dataset
     print("Loading dataset...")
-    dataset_train = ValidityNoveltyClassificationDataset("data/TaskA_train.csv")
-    dataset_dev = ValidityNoveltyClassificationDataset("data/TaskA_dev.csv")
-    dataset_test = ValidityNoveltyClassificationDataset("data/TaskA_test.csv")
+    dataset_train = ClassificationDataset("data/TaskA_train.csv", task="Validity")
+    dataset_dev = ClassificationDataset("data/TaskA_dev.csv", task="Validity")
+    dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
 
     # Hyperparameters
     batch_size = 64
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     pad_idx = dataset_train.vocab["<PAD>"]
 
     # Create dataloader
-    collator = ValidityNoveltyClassificationCollator(dataset_train.vocab)
+    collator = ClassificationCollator(dataset_train.vocab)
     dataloader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collator)
 
     # Create model

@@ -1,7 +1,7 @@
 import argparse
 import datetime
 from sklearn.metrics import f1_score, accuracy_score
-from data.dataset import ValidityNoveltyClassificationDataset
+from data.dataset import ClassificationDataset
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments, EvalPrediction
 import torch
 from torch.utils.data import Dataset
@@ -52,40 +52,42 @@ if __name__ == "__main__":
 
     timestamp = datetime.datetime.now().strftime("%m%d-%H%M%S")
 
-    print("Loading data...")
-    dataset_train = ValidityNoveltyClassificationDataset("data/TaskA_train.csv", augment=args.augment)
-    dataset_valid = ValidityNoveltyClassificationDataset("data/TaskA_dev.csv")
-    print("Train size:", len(dataset_train))
-    print("Valid size:", len(dataset_valid))
-
-    # Preprocess the data
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
-    # Encode the sentences
-    print("Encoding sentences...")
-    encodings_train = tokenizer(
-        dataset_train.sentences,
-        add_special_tokens=True,
-        truncation="longest_first",
-        padding="max_length",
-        max_length=MAX_LENGTH,
-        return_tensors="pt",
-        verbose=False
-    )
-
-    encodings_valid = tokenizer(
-        dataset_valid.sentences,
-        add_special_tokens=True,
-        truncation="longest_first",
-        padding="max_length",
-        max_length=MAX_LENGTH,
-        return_tensors="pt",
-        verbose=False
-    )
-
-    # Train two models, one for each task
+    # Preprocess data and train models for each task separately
     print("Training models...")
-    for task in ["validity", "novelty"]:
+    for task in ["Validity", "Novelty"]:
+        print("Task:", task)
+
+        # Load datasets
+        print("Loading data...")
+        dataset_train = ClassificationDataset("data/TaskA_train.csv", task=task, augment=args.augment)
+        dataset_valid = ClassificationDataset("data/TaskA_dev.csv", task=task)
+        print("Train size:", len(dataset_train))
+        print("Valid size:", len(dataset_valid))
+
+        # Encode the sentences
+        print("Encoding sentences...")
+        encodings_train = tokenizer(
+            dataset_train.sentences,
+            add_special_tokens=True,
+            truncation="longest_first",
+            padding="max_length",
+            max_length=MAX_LENGTH,
+            return_tensors="pt",
+            verbose=False
+        )
+
+        encodings_valid = tokenizer(
+            dataset_valid.sentences,
+            add_special_tokens=True,
+            truncation="longest_first",
+            padding="max_length",
+            max_length=MAX_LENGTH,
+            return_tensors="pt",
+            verbose=False
+        )
+
         # Create the model
         training_args = TrainingArguments(
             output_dir="results",
@@ -101,8 +103,8 @@ if __name__ == "__main__":
         model = RobertaForSequenceClassification.from_pretrained("roberta-base").to(device)
 
         # Convert the labels to tensors
-        labels_train = torch.tensor(dataset_train.labels[task])
-        labels_valid = torch.tensor(dataset_valid.labels[task])
+        labels_train = torch.tensor(dataset_train.labels)
+        labels_valid = torch.tensor(dataset_valid.labels)
 
         # Create the datasets
         transformer_dataset_train = TransformerDataset(encodings_train, labels_train)
@@ -124,7 +126,8 @@ if __name__ == "__main__":
         trainer.save_model(f"models/transformer-baseline_{task}_{timestamp}.pt")
 
         # Test the model on the test set
-        dataset_test = ValidityNoveltyClassificationDataset("data/TaskA_test.csv")
+        print("Testing model")
+        dataset_test = ClassificationDataset("data/TaskA_test.csv", task=task)
 
         # Encode the sentences
         encodings_test = tokenizer(
@@ -138,7 +141,7 @@ if __name__ == "__main__":
         )
 
         # Predict the labels
-        transformer_dataset_test = TransformerDataset(encodings_test, torch.tensor(dataset_test.labels[task]))
+        transformer_dataset_test = TransformerDataset(encodings_test, torch.tensor(dataset_test.labels))
 
         # Calculate and print the accuracy and F1 score
         results = trainer.evaluate(transformer_dataset_test)

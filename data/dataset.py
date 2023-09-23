@@ -1,77 +1,11 @@
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
-import nltk
-from nltk.corpus import wordnet
-import random
-
-nltk.download('wordnet')
 
 
-def get_synonyms(word):
-    """Get synonyms of a word."""
-    synonyms = set()
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas():
-            synonym = lemma.name().replace("_", " ").replace("-", " ").lower()
-            synonym = "".join([char for char in synonym if char in ' qwertyuiopasdfghjklzxcvbnm'])
-            synonyms.add(synonym)
-    if word in synonyms:
-        synonyms.remove(word)
-    return list(synonyms)
-
-
-def synonym_replacement(words, n=1):
-    """Replace n words in the sentence with synonyms from WordNet."""
-    new_words = words.copy()
-    random_word_list = list(set([word for word in words if word.isalpha()]))
-    random.shuffle(random_word_list)
-    num_replaced = 0
-    for random_word in random_word_list:
-        synonyms = get_synonyms(random_word)
-        if len(synonyms) >= 1:
-            synonym = random.choice(synonyms)
-            new_words = [synonym if word == random_word else word for word in new_words]
-            num_replaced += 1
-        if num_replaced >= n:  # Only replace up to n words
-            break
-
-    return new_words
-
-
+# TODO: Implement data augmentation
 def augment_data(sentences, labels):
-    # Split the sentences and labels by class
-    novel_sentences = [sentences[i] for i, lbl in enumerate(labels["novelty"]) if lbl == 1]
-    not_novel_sentences = [sentences[i] for i, lbl in enumerate(labels["novelty"]) if lbl == 0]
-
-    difference = len(not_novel_sentences) - len(novel_sentences)
-
-    augmented_sentences = []
-    augmented_labels = {
-        "validity": [],
-        "novelty": []
-    }
-
-    # Augment the novel sentences by the difference
-    for i in range(difference):
-        idx = i % len(novel_sentences)  # Use modulo to wrap around if difference > len(novel_sentences)
-        words = novel_sentences[idx].split()
-        new_sentence_words = synonym_replacement(words, n=1)
-        new_sentence = ' '.join(new_sentence_words)
-        augmented_sentences.append(new_sentence)
-
-        # Copy over the labels for augmented sentences
-        for label_type, label_values in labels.items():
-            augmented_labels[label_type].append(label_values[idx])
-
-    # Combine the original and augmented data
-    all_sentences = sentences + augmented_sentences
-    all_labels = {
-        "validity": labels["validity"] + augmented_labels["validity"],
-        "novelty": labels["novelty"] + augmented_labels["novelty"]
-    }
-
-    return all_sentences, all_labels
+    return sentences, labels
 
 
 PADDING_TOKEN = "<PAD>"
@@ -81,8 +15,13 @@ PREMISE_TOKEN = "<PREMISE>"
 CONCLUSION_TOKEN = "<CONCLUSION>"
 
 
-class ValidityNoveltyClassificationDataset(Dataset):
-    def __init__(self, file_name, augment=False):
+class ClassificationDataset(Dataset):
+    def __init__(self, file_name, task, augment=False):
+
+        if task not in ["Validity", "Novelty"]:
+            raise ValueError("Invalid task. Task must be either 'Validity' or 'Novelty'.")
+
+        self.task = task
 
         # Get the data from the csv file
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
@@ -101,24 +40,22 @@ class ValidityNoveltyClassificationDataset(Dataset):
 
         # Get the sentences and labels
         self.sentences = []
-        validity_labels = []
-        novelty_labels = []
+        self.labels = []
+
         for entry in self.data:
-            # Skip the entry if the validity or novelty is 0
-            if entry["Validity"] == 0 or entry["Novelty"] == 0:
+            # Skip the entry if the validity and novelty is 0
+            # TODO: Try out ignoring all entries with no high confidence
+            if entry[task] == 0:
                 continue
+
             # Concatenate the topic, premise and conclusion with the special tokens
             sentence = f'{TOPIC_TOKEN} {entry["Topic"]} {PREMISE_TOKEN} {entry["Premise"]} {CONCLUSION_TOKEN} {entry["Conclusion"]}'
-            self.sentences.append(sentence)
 
-            # Add the labels and replace -1 with 0
-            validity_labels.append(0 if entry["Validity"] == -1 else 1)
-            novelty_labels.append(0 if entry["Novelty"] == -1 else 1)
-
-        self.labels = {
-            "validity": validity_labels,
-            "novelty": novelty_labels
-        }
+            # Add the sentence with its corresponding label to the respective lists
+            # Replace -1 with 0 for the labels
+            if entry[task] == 1 or entry[task] == -1:
+                self.sentences.append(sentence)
+                self.labels.append(0 if entry[task] == -1 else 1)
 
         # If augment is True augment the data
         if augment:
@@ -146,13 +83,13 @@ class ValidityNoveltyClassificationDataset(Dataset):
         return vocab
 
     def __getitem__(self, idx):
-        return self.sentences[idx], [self.labels["validity"][idx], self.labels["novelty"][idx]]
+        return self.sentences[idx], self.labels[idx]
 
     def __len__(self):
         return len(self.sentences)
 
 
-class ValidityNoveltyClassificationCollator:
+class ClassificationCollator:
     def __init__(self, vocab, max_length=500):
         self.vocab = vocab
         self.max_length = max_length
@@ -184,12 +121,12 @@ class ValidityNoveltyClassificationCollator:
 
 
 if __name__ == "__main__":
-    dataset = ValidityNoveltyClassificationDataset("TaskA_train.csv")
+    dataset = ClassificationDataset("data/TaskA_train.csv", "Validity", augment=False)
     print(dataset[0])
     print(dataset[1])
     print(len(dataset.vocab))
 
-    collator = ValidityNoveltyClassificationCollator(dataset.vocab)
+    collator = ClassificationCollator(dataset.vocab)
 
     # Print longest and shortest topics, premises, and conclusions
     print("Longest")
