@@ -16,18 +16,27 @@ CONCLUSION_TOKEN = "<CONCLUSION>"
 
 
 class ClassificationDataset(Dataset):
-    def __init__(self, file_name, task, augment=False):
+    def __init__(self, file_name, task, augment=False, filter_out="defeasible"):
 
+        # Check if the task is valid
         if task not in ["Validity", "Novelty"]:
             raise ValueError("Invalid task. Task must be either 'Validity' or 'Novelty'.")
 
-        self.task = task
+        # Check if the filter_out is valid
+        if filter_out not in ["defeasible", "majority", "confident"]:
+            raise ValueError("Invalid filter_out. filter_out must be either 'defeasible' or 'majority' or 'confident.")
+        # Create a list of filters
+        filters = []
+        for filter_keyword in ["defeasible", "majority", "confident"]:
+            filters.append(filter_keyword)
+            if filter_keyword == filter_out:
+                break
 
         # Get the data from the csv file
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
 
         # Make the data into a list of tuples
-        self.data = [
+        data = [
             {
                 "Topic": row["topic"],
                 "Premise": row["Premise"],
@@ -42,10 +51,10 @@ class ClassificationDataset(Dataset):
         self.sentences = []
         self.labels = []
 
-        for entry in self.data:
+        for entry in data:
             # Skip the entry if the validity and novelty is 0
             # TODO: Try out ignoring all entries with no high confidence
-            if entry["Confidence"] == "defeasible" or entry["Confidence"] == "majority" or entry["Confidence"] == "confident":
+            if entry["Confidence"] in filters:
                 continue
 
             # Concatenate the topic, premise and conclusion with the special tokens

@@ -34,8 +34,13 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs to train the model")
+    parser.add_argument("--filter", type=str, default="defeasible", help="Filter to use for the data")
     parser.add_argument("--augment", action="store_true", help="Whether to augment the data or not")
     args = parser.parse_args()
+
+    # Check arguments
+    assert args.filter in ["defeasible", "majority", "confident"], \
+        "Invalid filter keyword. Valid options are: defeasible, majority, confident"
 
     # Hyperparameters
     MAX_LENGTH = 200
@@ -73,7 +78,10 @@ if __name__ == "__main__":
 
         # Load datasets
         print("Loading data...")
-        dataset_train = ClassificationDataset("data/TaskA_train.csv", task=task, augment=args.augment)
+        dataset_train = ClassificationDataset("data/TaskA_train.csv",
+                                              task=task,
+                                              augment=args.augment,
+                                              filter_out=args.filter)
         dataset_valid = ClassificationDataset("data/TaskA_dev.csv", task=task)
         print("Train size:", len(dataset_train))
         print("Valid size:", len(dataset_valid))
