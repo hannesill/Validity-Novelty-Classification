@@ -45,7 +45,7 @@ class ClassificationDataset(Dataset):
         for entry in self.data:
             # Skip the entry if the validity and novelty is 0
             # TODO: Try out ignoring all entries with no high confidence
-            if entry["Confidence"] == "defeasible" or entry["Confidence"] == "confident":
+            if entry["Confidence"] == "defeasible" or entry["Confidence"] == "majority":
                 continue
 
             # Concatenate the topic, premise and conclusion with the special tokens
