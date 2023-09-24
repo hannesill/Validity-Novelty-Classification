@@ -47,6 +47,7 @@ class ClassificationDataset(Dataset):
             filters.append(filter_keyword)
             if filter_keyword == filter_out:
                 break
+        print("Filters:", filters)
 
         # Get the data from the csv file
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
