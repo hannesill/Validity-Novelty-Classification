@@ -11,21 +11,25 @@ PREMISE_TOKEN = "<PREMISE>"
 CONCLUSION_TOKEN = "<CONCLUSION>"
 
 
-def create_novel_sentences(data, num_per_sentence=8):
+def create_novel_sentences(data, sampling_rate=0.9):
+    # Calculate the number of novel sentences to create
+    num_novel_sentences = int(len(data) * sampling_rate)
+
     # Choose random other conclusion for each sentence's topic and premise
     novel_sentences = []
-    for sample in data:
+    for i in range(0, num_novel_sentences):
+        # Choose a random sample
+        sample = random.choice(data)
         topic = sample["Topic"]
         premise = sample["Premise"]
         conclusion = sample["Conclusion"]
-        for _ in range(num_per_sentence):
-            # Choose a random conclusion different from the current conclusion
-            while True:
-                random_conclusion = random.choice(data)["Conclusion"]
-                if random_conclusion != conclusion:
-                    break
-            # Create the novel sentence
-            novel_sentences.append(f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {random_conclusion}')
+        # Choose a random conclusion different from the current conclusion
+        while True:
+            random_conclusion = random.choice(data)["Conclusion"]
+            if random_conclusion != conclusion:
+                break
+        # Create the novel sentence
+        novel_sentences.append(f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {random_conclusion}')
 
     return novel_sentences
 
