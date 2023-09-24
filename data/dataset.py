@@ -26,7 +26,7 @@ def create_novel_sentences(data, num_new_sentences):
             if random_conclusion != conclusion:
                 break
         # Create the novel sentence
-        novel_sentences.append(f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {random_conclusion}')
+        novel_sentences.append(f'<s> {topic} </s> <s> {premise} </s> <s> {random_conclusion} </s>'.lower())
 
     return novel_sentences
 
@@ -73,8 +73,8 @@ class ClassificationDataset(Dataset):
             if entry["Confidence"] in filters:
                 continue
 
-            # Concatenate the topic, premise and conclusion with the special tokens
-            sentence = f'{TOPIC_TOKEN} {entry["Topic"]} {PREMISE_TOKEN} {entry["Premise"]} {CONCLUSION_TOKEN} {entry["Conclusion"]}'
+            # Concatenate the topic, premise and conclusion with the special tokens and lower case the sentence
+            sentence = f'<s> {entry["Topic"]} </s> <s> {entry["Premise"]} </s> <s> {entry["Conclusion"]} </s>'.lower()
 
             # Add the sentence with its corresponding label to the respective lists
             # Replace -1 with 0 for the labels
