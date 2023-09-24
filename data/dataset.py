@@ -1,11 +1,7 @@
+import random
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
-
-
-# TODO: Implement data augmentation
-def augment_data(sentences, labels):
-    return sentences, labels
 
 
 PADDING_TOKEN = "<PAD>"
@@ -13,6 +9,25 @@ UNKNOWN_TOKEN = "<UNK>"
 TOPIC_TOKEN = "<TOPIC>"
 PREMISE_TOKEN = "<PREMISE>"
 CONCLUSION_TOKEN = "<CONCLUSION>"
+
+
+def create_novel_sentences(data, num_per_sentence=8):
+    # Choose random other conclusion for each sentence's topic and premise
+    novel_sentences = []
+    for sample in data:
+        topic = sample["Topic"]
+        premise = sample["Premise"]
+        conclusion = sample["Conclusion"]
+        for _ in range(num_per_sentence):
+            # Choose a random conclusion different from the current conclusion
+            while True:
+                random_conclusion = random.choice(data)["Conclusion"]
+                if random_conclusion != conclusion:
+                    break
+            # Create the novel sentence
+            novel_sentences.append(f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {random_conclusion}')
+
+    return novel_sentences
 
 
 class ClassificationDataset(Dataset):
@@ -52,8 +67,7 @@ class ClassificationDataset(Dataset):
         self.labels = []
 
         for entry in data:
-            # Skip the entry if the validity and novelty is 0
-            # TODO: Try out ignoring all entries with no high confidence
+            # Skip the entry if it has a confidence score in the filters
             if entry["Confidence"] in filters:
                 continue
 
@@ -66,9 +80,11 @@ class ClassificationDataset(Dataset):
                 self.sentences.append(sentence)
                 self.labels.append(0 if entry[task] == -1 else 1)
 
-        # If augment is True augment the data
-        if augment:
-            self.sentences, self.labels = augment_data(self.sentences, self.labels)
+        # If augment is True and task is Novelty, create novel sentences
+        if augment and task == "Novelty":
+            novel_sentences = create_novel_sentences(data)
+            self.sentences += novel_sentences
+            self.labels += [1] * len(novel_sentences)
 
         # Get the vocab
         self.vocab = self.get_vocab()
