@@ -11,13 +11,10 @@ PREMISE_TOKEN = "<PREMISE>"
 CONCLUSION_TOKEN = "<CONCLUSION>"
 
 
-def create_novel_sentences(data, sampling_rate=0.9):
-    # Calculate the number of novel sentences to create
-    num_novel_sentences = int(len(data) * sampling_rate)
-
+def create_novel_sentences(data, num_new_sentences):
     # Choose random other conclusion for each sentence's topic and premise
     novel_sentences = []
-    for i in range(0, num_novel_sentences):
+    for i in range(0, num_new_sentences):
         # Choose a random sample
         sample = random.choice(data)
         topic = sample["Topic"]
@@ -86,7 +83,10 @@ class ClassificationDataset(Dataset):
 
         # If augment is True and task is Novelty, create novel sentences
         if augment and task == "Novelty":
-            novel_sentences = create_novel_sentences(data)
+            # Calculate the number of novel sentences to create
+            num_novel_sentences = len([entry for entry in self.labels if entry == 1])
+            num_new_sentences = len(self.sentences) - num_novel_sentences
+            novel_sentences = create_novel_sentences(data, num_new_sentences)
             self.sentences += novel_sentences
             self.labels += [1] * len(novel_sentences)
 
