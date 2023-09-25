@@ -35,14 +35,14 @@ def paraphrase(
         return_tensors="pt", padding="longest",
         max_length=max_length,
         truncation=True,
-    ).input_ids
+    ).input_ids.to(device)
 
     outputs = model.generate(
         input_ids, repetition_penalty=repetition_penalty,
         num_return_sequences=num_return_sequences, no_repeat_ngram_size=no_repeat_ngram_size,
         num_beams=num_beams, num_beam_groups=num_beam_groups,
         max_length=max_length, diversity_penalty=diversity_penalty
-    )
+    ).cpu()
 
     res = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
