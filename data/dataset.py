@@ -63,7 +63,7 @@ def augment_data(data, num_new_sentences, task):
         new_sentence = f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {paraphrase(conclusion)[0]}'.lower()
         # Add the new sentence and label to the lists
         new_sentences.append(new_sentence)
-        new_labels.append(sample[task])
+        new_labels.append(0 if sample[task] == -1 else 1)
 
     return new_sentences, new_labels
 
@@ -110,7 +110,7 @@ class ClassificationDataset(Dataset):
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
 
         # Make the data into a list of tuples
-        self.data = [
+        orig_data = [
             {
                 "Topic": row["topic"],
                 "Premise": row["Premise"],
@@ -121,11 +121,12 @@ class ClassificationDataset(Dataset):
             for _, row in df.iterrows()
         ]
 
-        # Get the sentences and labels
+        # Get the filtered data with its sentences and labels
+        self.data = []
         self.sentences = []
         self.labels = []
 
-        for entry in self.data:
+        for entry in orig_data:
             # Skip the entry if it has a confidence score in the filters
             if entry["Confidence"] in filters:
                 continue
@@ -138,6 +139,9 @@ class ClassificationDataset(Dataset):
             if entry[task] == 1 or entry[task] == -1:
                 self.sentences.append(sentence)
                 self.labels.append(0 if entry[task] == -1 else 1)
+
+                # Add the entry to the data
+                self.data.append(entry)
 
         # If augment is True and task is Novelty, create novel sentences
         if augment:
