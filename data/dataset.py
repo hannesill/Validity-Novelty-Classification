@@ -2,6 +2,8 @@ import random
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from tqdm import tqdm
 
 
 PADDING_TOKEN = "<PAD>"
@@ -9,6 +11,61 @@ UNKNOWN_TOKEN = "<UNK>"
 TOPIC_TOKEN = "<TOPIC>"
 PREMISE_TOKEN = "<PREMISE>"
 CONCLUSION_TOKEN = "<CONCLUSION>"
+
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("Device:", device)
+
+tokenizer = AutoTokenizer.from_pretrained("humarin/chatgpt_paraphraser_on_T5_base")
+model = AutoModelForSeq2SeqLM.from_pretrained("humarin/chatgpt_paraphraser_on_T5_base").to(device)
+
+
+def paraphrase(
+        question,
+        num_beams=2,
+        num_beam_groups=2,
+        num_return_sequences=1,
+        repetition_penalty=5.0,
+        diversity_penalty=3.0,
+        no_repeat_ngram_size=2,
+        max_length=500
+):
+    input_ids = tokenizer(
+        f'paraphrase: {question}',
+        return_tensors="pt", padding="longest",
+        max_length=max_length,
+        truncation=True,
+    ).input_ids
+
+    outputs = model.generate(
+        input_ids, repetition_penalty=repetition_penalty,
+        num_return_sequences=num_return_sequences, no_repeat_ngram_size=no_repeat_ngram_size,
+        num_beams=num_beams, num_beam_groups=num_beam_groups,
+        max_length=max_length, diversity_penalty=diversity_penalty
+    )
+
+    res = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+    return res
+
+
+def augment_data(data, num_new_sentences, task):
+    new_sentences = []
+    new_labels = []
+
+    for i in tqdm(range(0, num_new_sentences)):
+        # Select random sample
+        sample = random.choice(data)
+        topic = sample["Topic"]
+        premise = sample["Premise"]
+        conclusion = sample["Conclusion"]
+        # Create the new sentence by paraphrasing the conclusion
+        new_sentence = f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {paraphrase(conclusion)[0]}'.lower()
+        # Add the new sentence and label to the lists
+        new_sentences.append(new_sentence)
+        new_labels.append(sample[task])
+
+    return new_sentences, new_labels
 
 
 def create_novel_sentences(data, num_new_sentences):
@@ -53,7 +110,7 @@ class ClassificationDataset(Dataset):
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
 
         # Make the data into a list of tuples
-        data = [
+        self.data = [
             {
                 "Topic": row["topic"],
                 "Premise": row["Premise"],
@@ -68,7 +125,7 @@ class ClassificationDataset(Dataset):
         self.sentences = []
         self.labels = []
 
-        for entry in data:
+        for entry in self.data:
             # Skip the entry if it has a confidence score in the filters
             if entry["Confidence"] in filters:
                 continue
@@ -83,13 +140,20 @@ class ClassificationDataset(Dataset):
                 self.labels.append(0 if entry[task] == -1 else 1)
 
         # If augment is True and task is Novelty, create novel sentences
-        if augment and task == "Novelty":
-            # Calculate the number of novel sentences to create
-            num_novel_sentences = len([entry for entry in self.labels if entry == 1])
-            num_new_sentences = len(self.sentences) - num_novel_sentences
-            novel_sentences = create_novel_sentences(data, num_new_sentences)
-            self.sentences += novel_sentences
-            self.labels += [1] * len(novel_sentences)
+        if augment:
+            if task == "Novelty":
+                # Calculate the number of novel sentences to create
+                num_novel_sentences = len([entry for entry in self.labels if entry == 1])
+                num_new_sentences = len(self.sentences) - num_novel_sentences
+                novel_sentences = create_novel_sentences(self.data, num_new_sentences)
+                self.sentences += novel_sentences
+                self.labels += [1] * len(novel_sentences)
+
+            # Augment the data by paraphrasing the conclusion
+            print("Augmenting data...")
+            new_sentences, new_labels = augment_data(self.data, len(self.sentences), task)
+            self.sentences += new_sentences
+            self.labels += new_labels
 
         # Get the vocab
         self.vocab = self.get_vocab()
@@ -150,21 +214,18 @@ class ClassificationCollator:
         }
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":#
+
+    text = "This is a test sentence, which was written in the north of Bielefeld, a mid-sized city in the north-west of Germany."
+    print(paraphrase(text))
+
     dataset = ClassificationDataset("data/TaskA_train.csv", "Validity", augment=False)
     print(dataset[0])
-    print(dataset[1])
+    print(dataset.data[0])
+    print(paraphrase(dataset.data[0]["Premise"]))
+    print(paraphrase(dataset.data[0]["Conclusion"]))
     print(len(dataset.vocab))
 
-    collator = ClassificationCollator(dataset.vocab)
-
-    # Print longest and shortest topics, premises, and conclusions
-    print("Longest")
-    print(max([len(topic) for topic in [sample["Topic"] for sample in dataset.data]]))
-    print(max([len(premise) for premise in [sample["Premise"] for sample in dataset.data]]))
-    print(max([len(conclusion) for conclusion in [sample["Conclusion"] for sample in dataset.data]]))
-
-    print("Shortest")
-    print(min([len(topic) for topic in [sample["Topic"] for sample in dataset.data]]))
-    print(min([len(premise) for premise in [sample["Premise"] for sample in dataset.data]]))
-    print(min([len(conclusion) for conclusion in [sample["Conclusion"] for sample in dataset.data]]))
+    # Print longest premise and conclusion
+    print(max([len(entry["Premise"]) for entry in dataset.data]))
+    print(max([len(entry["Conclusion"]) for entry in dataset.data]))
