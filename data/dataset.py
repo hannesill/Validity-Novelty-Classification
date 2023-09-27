@@ -166,8 +166,13 @@ class ClassificationDataset(Dataset):
 
             # Further augment the data by paraphrasing the conclusion
             augmenting_factor = 1
-            # new_data = augment_data(self.data, augmenting_factor, task)
-            # self.data += new_data
+            new_data = augment_data(self.data, augmenting_factor, task)
+            self.data += new_data
+
+            # Save the augmented data
+            augmented_file_name = file_name.replace(".csv", f"{task}_augmented_{augmenting_factor}.csv")
+            df = pd.DataFrame(self.data)
+            df.to_csv(augmented_file_name, index=False)
 
         # Shuffle the data
         random.shuffle(self.data)
