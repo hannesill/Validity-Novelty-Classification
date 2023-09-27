@@ -169,7 +169,7 @@ class ClassificationDataset(Dataset):
             print("Augmenting data...")
 
             # Further augment the data by paraphrasing the conclusion
-            augmenting_factor = 1
+            augmenting_factor = 0.5
             new_data = augment_data(self.data, augmenting_factor, task)
             self.data += new_data
 
