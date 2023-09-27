@@ -151,19 +151,21 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_novel_entries
 
-            # By oversampling not valid entries to match the number of valid entries
+            # By undersampling valid entries to match the number of not valid entries
             elif task == "Validity":
                 # Calculate the number of valid and not valid entries
                 num_valid_entries = len([entry for entry in self.data if entry["Validity"] == 1])
                 num_not_valid_entries = len([entry for entry in self.data if entry["Validity"] == 0])
                 num_new_entries = num_valid_entries - num_not_valid_entries
 
-                # Oversample the not valid entries
-                not_valid_entries = [entry for entry in self.data if entry["Validity"] == 0]
-                new_not_valid_entries = random.choices(not_valid_entries, k=num_new_entries)
+                # Undersample the valid entries
+                valid_entries = [entry for entry in self.data if entry["Validity"] == 1]
+                new_valid_entries = random.choices(valid_entries, k=num_new_entries)
 
+                # Only keep the not valid entries
+                self.data = [entry for entry in self.data if entry["Validity"] == 0]
                 # Add the new entries to the data
-                self.data += new_not_valid_entries
+                self.data += new_valid_entries
 
         if augment:
             print("Augmenting data...")
