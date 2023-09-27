@@ -138,13 +138,18 @@ class ClassificationDataset(Dataset):
 
         if balance:
             # Balance the data
-            # By creating new novel entries
+            # By oversampling not novel entries
             if task == "Novelty":
                 # Calculate the number of novel sentences to create
                 num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
                 num_new_entries = len(self.data) - num_novel_entries
-                novel_entries = create_novel_entries(self.data, num_new_entries)
-                self.data += novel_entries
+
+                # Oversample the novel entries
+                novel_entries = [entry for entry in self.data if entry[task] == 1]
+                new_novel_entries = random.choices(novel_entries, k=num_new_entries)
+
+                # Add the new entries to the data
+                self.data += new_novel_entries
 
             # By oversampling not valid entries to match the number of valid entries
             elif task == "Validity":
