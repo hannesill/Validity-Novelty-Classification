@@ -137,28 +137,28 @@ class ClassificationDataset(Dataset):
 
             self.data.append(entry)
 
-            # Balance the data
-            # By creating new novel entries
-            if task == "Novelty":
-                # Calculate the number of novel sentences to create
-                num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
-                num_new_entries = len(self.data) - num_novel_entries
-                novel_entries = create_novel_entries(self.data, num_new_entries)
-                self.data += novel_entries
+        # Balance the data
+        # By creating new novel entries
+        if task == "Novelty":
+            # Calculate the number of novel sentences to create
+            num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
+            num_new_entries = len(self.data) - num_novel_entries
+            novel_entries = create_novel_entries(self.data, num_new_entries)
+            self.data += novel_entries
 
-            # By oversampling not valid entries to match the number of valid entries
-            elif task == "Validity":
-                # Calculate the number of valid and not valid entries
-                num_valid_entries = len([entry for entry in self.data if entry["Validity"] == 1])
-                num_not_valid_entries = len([entry for entry in self.data if entry["Validity"] == 0])
-                num_new_entries = num_valid_entries - num_not_valid_entries
+        # By oversampling not valid entries to match the number of valid entries
+        elif task == "Validity":
+            # Calculate the number of valid and not valid entries
+            num_valid_entries = len([entry for entry in self.data if entry["Validity"] == 1])
+            num_not_valid_entries = len([entry for entry in self.data if entry["Validity"] == 0])
+            num_new_entries = num_valid_entries - num_not_valid_entries
 
-                # Oversample the not valid entries
-                not_valid_entries = [entry for entry in self.data if entry["Validity"] == 0]
-                new_not_valid_entries = random.choices(not_valid_entries, k=num_new_entries)
+            # Oversample the not valid entries
+            not_valid_entries = [entry for entry in self.data if entry["Validity"] == 0]
+            new_not_valid_entries = random.choices(not_valid_entries, k=num_new_entries)
 
-                # Add the new entries to the data
-                self.data += new_not_valid_entries
+            # Add the new entries to the data
+            self.data += new_not_valid_entries
 
         # Augment the data if set to True
         if augment:
