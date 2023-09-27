@@ -58,7 +58,7 @@ def augment_data(data, augmenting_factor, task):
             "Topic": sample["Topic"],
             "Premise": sample["Premise"],
             "Conclusion": paraphrase(sample["Conclusion"]),
-            "Label": sample[task],
+            task: sample[task],
             "Confidence": sample["Confidence"]
         }
         new_entries.append(new_entry)
@@ -83,7 +83,7 @@ def create_novel_entries(data, num_new_entries):
             "Topic": sample["Topic"],
             "Premise": sample["Premise"],
             "Conclusion": random_conclusion,
-            "Label": sample["Novelty"],
+            "Novelty": sample["Novelty"],
             "Confidence": sample["Confidence"]
         }
 
@@ -166,8 +166,8 @@ class ClassificationDataset(Dataset):
 
             # Further augment the data by paraphrasing the conclusion
             augmenting_factor = 1
-            new_data = augment_data(self.data, augmenting_factor, task)
-            self.data += new_data
+            # new_data = augment_data(self.data, augmenting_factor, task)
+            # self.data += new_data
 
         # Shuffle the data
         random.shuffle(self.data)
