@@ -141,32 +141,15 @@ class ClassificationDataset(Dataset):
             # By oversampling not novel entries
             if task == "Novelty":
                 # Calculate the number of novel sentences to create
-                # num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
-                # num_new_entries = len(self.data) - num_novel_entries
+                num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
+                num_new_entries = len(self.data) - num_novel_entries
 
                 # Oversample the novel entries
-                num_balance = int(len(self.data) / 2)
                 novel_entries = [entry for entry in self.data if entry[task] == 1]
-                not_novel_entries = [entry for entry in self.data if entry[task] == 0]
-                new_novel_entries = random.choices(novel_entries, k=num_balance)
-                new_not_novel_entries = random.choices(not_novel_entries, k=num_balance)
+                new_novel_entries = random.choices(novel_entries, k=num_new_entries)
 
                 # Add the new entries to the data
-                self.data = new_novel_entries + new_not_novel_entries
-
-            # By undersampling valid entries to match the number of not valid entries
-            # elif task == "Validity":
-            #     # Calculate the number of not valid entries
-            #     num_not_valid_entries = len([entry for entry in self.data if entry["Validity"] == 0])
-            #
-            #     # Undersample the valid entries
-            #     valid_entries = [entry for entry in self.data if entry["Validity"] == 1]
-            #     new_valid_entries = random.choices(valid_entries, k=num_not_valid_entries)
-            #
-            #     # Only keep the not valid entries
-            #     self.data = [entry for entry in self.data if entry["Validity"] == 0]
-            #     # Add the new entries to the data
-            #     self.data += new_valid_entries
+                self.data += new_novel_entries
 
         if augment:
             print("Augmenting data...")
