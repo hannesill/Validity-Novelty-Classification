@@ -127,8 +127,9 @@ class ClassificationDataset(Dataset):
         # Filter the data and convert -1 labels to 0
         self.data = []
         for entry in orig_data:
-            # Skip the entry if it has a confidence score in the filters
-            if (entry["Confidence"] in filters and entry[task] == 1) or (entry["Confidence"] == "defeasible"):
+            # Skip the entry if it has a confidence score in the filters and the task is Validity
+            # else skip if the entry is defeasible
+            if (entry["Confidence"] in filters and task == "Validity") or (entry["Confidence"] == "defeasible"):
                 continue
 
             # Convert label
@@ -155,7 +156,7 @@ class ClassificationDataset(Dataset):
             print("Augmenting data...")
 
             # Further augment the data by paraphrasing the conclusion
-            augmenting_factor = 0.5
+            augmenting_factor = 0.1
             new_data = augment_data(self.data, augmenting_factor, task)
             self.data += new_data
 
