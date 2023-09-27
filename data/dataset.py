@@ -128,7 +128,7 @@ class ClassificationDataset(Dataset):
         self.data = []
         for entry in orig_data:
             # Skip the entry if it has a confidence score in the filters
-            if entry["Confidence"] in filters:
+            if (entry["Confidence"] in filters and entry[task] == 1) or (entry["Confidence"] == "defeasible"):
                 continue
 
             # Convert label
