@@ -137,10 +137,6 @@ class ClassificationDataset(Dataset):
 
             self.data.append(entry)
 
-        # Augment the data if set to True
-        if augment:
-            print("Augmenting data...")
-
             # Balance the data
             # By creating new novel entries
             if task == "Novelty":
@@ -164,13 +160,17 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_not_valid_entries
 
+        # Augment the data if set to True
+        if augment:
+            print("Augmenting data...")
+
             # Further augment the data by paraphrasing the conclusion
             augmenting_factor = 1
             new_data = augment_data(self.data, augmenting_factor, task)
             self.data += new_data
 
             # Save the augmented data
-            augmented_file_name = file_name.replace(".csv", f"{task}_augmented_{augmenting_factor}.csv")
+            augmented_file_name = file_name.replace(".csv", f"_{task}_augmented_{augmenting_factor}.csv")
             df = pd.DataFrame(self.data)
             df.to_csv(augmented_file_name, index=False)
 
