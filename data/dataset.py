@@ -74,10 +74,9 @@ def create_novel_entries(data, num_new_entries):
         sample = random.choice(data)
         conclusion = sample["Conclusion"]
         # Choose a random conclusion different from the current conclusion
-        while True:
+        random_conclusion = random.choice(data)["Conclusion"]
+        while random_conclusion == conclusion:
             random_conclusion = random.choice(data)["Conclusion"]
-            if random_conclusion != conclusion:
-                break
 
         novel_entry = {
             "Topic": sample["Topic"],
@@ -178,7 +177,6 @@ class ClassificationDataset(Dataset):
         random.shuffle(self.data)
 
         # Get the sentences and labels
-        # TODO: Try without special tokens
         self.sentences = [
             f"{TOPIC_TOKEN} {entry['Topic']} {PREMISE_TOKEN} {entry['Premise']} {CONCLUSION_TOKEN} {entry['Conclusion']}".lower()
             for entry in self.data
