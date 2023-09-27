@@ -1,7 +1,7 @@
 import argparse
 import datetime
 from sklearn.metrics import f1_score, accuracy_score
-from data.dataset import ClassificationDataset
+from data.dataset import ClassificationDataset, TOPIC_TOKEN, PREMISE_TOKEN, CONCLUSION_TOKEN
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments, EvalPrediction
 import torch
 from torch.utils.data import Dataset
@@ -58,6 +58,8 @@ if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%m%d-%H%M%S")
 
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+    # Add special tokens
+    tokenizer.add_tokens([TOPIC_TOKEN, PREMISE_TOKEN, CONCLUSION_TOKEN])
 
     training_args = TrainingArguments(
         output_dir="results",
@@ -110,6 +112,7 @@ if __name__ == "__main__":
 
         # Create the model
         model = RobertaForSequenceClassification.from_pretrained("roberta-base").to(device)
+        model.resize_token_embeddings(len(tokenizer))
 
         # Convert the labels to tensors
         labels_train = torch.tensor(dataset_train.labels)
