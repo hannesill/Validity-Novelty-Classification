@@ -172,6 +172,12 @@ class ClassificationDataset(Dataset):
             f"{TOPIC_TOKEN} {entry['Topic']} {PREMISE_TOKEN} {entry['Premise']} {CONCLUSION_TOKEN} {entry['Conclusion']}".lower()
             for entry in self.data
         ]
+        # Remove special symbols from the sentences
+        self.sentences = [
+            sentence.replace("–", " ").replace("—", " ").replace("“", "").replace("”", "").replace("á", "a")
+            for sentence in self.sentences
+        ]
+
         self.labels = [entry[task] for entry in self.data]
 
         # Get the vocab
