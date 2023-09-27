@@ -56,7 +56,7 @@ def augment_data(data, augmenting_factor, task):
         sample = random.choice(data)
         new_entry = {
             "Topic": sample["Topic"],
-            "Premise": sample["Premise"],
+            "Premise": paraphrase(sample["Premise"]),
             "Conclusion": paraphrase(sample["Conclusion"]),
             task: sample[task],
             "Confidence": sample["Confidence"]
