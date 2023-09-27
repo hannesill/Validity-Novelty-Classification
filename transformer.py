@@ -82,6 +82,7 @@ if __name__ == "__main__":
         dataset_train = ClassificationDataset("data/TaskA_train.csv",
                                               task=task,
                                               augment=args.augment,
+                                              balance=True,
                                               filter_out=args.filter)
         dataset_valid = ClassificationDataset("data/TaskA_dev.csv", task=task)
         print("Train size:", len(dataset_train))
