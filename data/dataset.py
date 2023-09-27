@@ -14,7 +14,6 @@ CONCLUSION_TOKEN = "<CONCLUSION>"
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print("Device:", device)
 
 tokenizer = AutoTokenizer.from_pretrained("humarin/chatgpt_paraphraser_on_T5_base")
 model = AutoModelForSeq2SeqLM.from_pretrained("humarin/chatgpt_paraphraser_on_T5_base").to(device)
@@ -49,43 +48,48 @@ def paraphrase(
     return res
 
 
-def augment_data(data, num_new_sentences, task):
-    new_sentences = []
-    new_labels = []
-
-    for i in tqdm(range(0, num_new_sentences)):
-        # Select random sample
+def augment_data(data, augmenting_factor, task):
+    new_entries = []
+    num_new_entries = int(len(data) * augmenting_factor)
+    for _ in tqdm(range(0, num_new_entries)):
+        # Select random sample and paraphrase the conclusion
         sample = random.choice(data)
-        topic = sample["Topic"]
-        premise = sample["Premise"]
-        conclusion = sample["Conclusion"]
-        # Create the new sentence by paraphrasing the conclusion
-        new_sentence = f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {paraphrase(conclusion)[0]}'.lower()
-        # Add the new sentence and label to the lists
-        new_sentences.append(new_sentence)
-        new_labels.append(0 if sample[task] == -1 else 1)
+        new_entry = {
+            "Topic": sample["Topic"],
+            "Premise": sample["Premise"],
+            "Conclusion": paraphrase(sample["Conclusion"]),
+            "Label": sample[task],
+            "Confidence": sample["Confidence"]
+        }
+        new_entries.append(new_entry)
 
-    return new_sentences, new_labels
+    return new_entries
 
 
-def create_novel_sentences(data, num_new_sentences):
+def create_novel_entries(data, num_new_entries):
     # Choose random other conclusion for each sentence's topic and premise
-    novel_sentences = []
-    for i in range(0, num_new_sentences):
+    novel_entries = []
+    for i in range(0, num_new_entries):
         # Choose a random sample
         sample = random.choice(data)
-        topic = sample["Topic"]
-        premise = sample["Premise"]
         conclusion = sample["Conclusion"]
         # Choose a random conclusion different from the current conclusion
         while True:
             random_conclusion = random.choice(data)["Conclusion"]
             if random_conclusion != conclusion:
                 break
-        # Create the novel sentence
-        novel_sentences.append(f'{TOPIC_TOKEN} {topic} {PREMISE_TOKEN} {premise} {CONCLUSION_TOKEN} {random_conclusion}'.lower())
 
-    return novel_sentences
+        novel_entry = {
+            "Topic": sample["Topic"],
+            "Premise": sample["Premise"],
+            "Conclusion": random_conclusion,
+            "Label": sample["Novelty"],
+            "Confidence": sample["Confidence"]
+        }
+
+        novel_entries.append(novel_entry)
+
+    return novel_entries
 
 
 class ClassificationDataset(Dataset):
@@ -121,43 +125,60 @@ class ClassificationDataset(Dataset):
             for _, row in df.iterrows()
         ]
 
-        # Get the filtered data with its sentences and labels
+        # Filter the data and convert -1 labels to 0
         self.data = []
-        self.sentences = []
-        self.labels = []
-
         for entry in orig_data:
             # Skip the entry if it has a confidence score in the filters
             if entry["Confidence"] in filters:
                 continue
 
-            # Concatenate the topic, premise and conclusion with the special tokens and lower case the sentence
-            sentence = f'{TOPIC_TOKEN} {entry["Topic"]} {PREMISE_TOKEN} {entry["Premise"]} {CONCLUSION_TOKEN} {entry["Conclusion"]}'.lower()
+            # Convert label
+            entry[task] = 0 if entry[task] == -1 else 1
 
-            # Add the sentence with its corresponding label to the respective lists
-            # Replace -1 with 0 for the labels
-            if entry[task] == 1 or entry[task] == -1:
-                self.sentences.append(sentence)
-                self.labels.append(0 if entry[task] == -1 else 1)
+            self.data.append(entry)
 
-                # Add the entry to the data
-                self.data.append(entry)
-
-        # If augment is True and task is Novelty, create novel sentences
+        # Augment the data if set to True
         if augment:
+            print("Augmenting data...")
+
+            # Balance the data
+            # By creating new novel entries
             if task == "Novelty":
                 # Calculate the number of novel sentences to create
-                num_novel_sentences = len([entry for entry in self.labels if entry == 1])
-                num_new_sentences = len(self.sentences) - num_novel_sentences
-                novel_sentences = create_novel_sentences(self.data, num_new_sentences)
-                self.sentences += novel_sentences
-                self.labels += [1] * len(novel_sentences)
+                num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
+                num_new_entries = len(self.data) - num_novel_entries
+                novel_entries = create_novel_entries(self.data, num_new_entries)
+                self.data += novel_entries
 
-            # Augment the data by paraphrasing the conclusion
-            print("Augmenting data...")
-            new_sentences, new_labels = augment_data(self.data, len(self.sentences), task)
-            self.sentences += new_sentences
-            self.labels += new_labels
+            # By oversampling not valid entries to match the number of valid entries
+            elif task == "Validity":
+                # Calculate the number of valid and not valid entries
+                num_valid_entries = len([entry for entry in self.data if entry["Validity"] == 1])
+                num_not_valid_entries = len([entry for entry in self.data if entry["Validity"] == 0])
+                num_new_entries = num_valid_entries - num_not_valid_entries
+
+                # Oversample the not valid entries
+                not_valid_entries = [entry for entry in self.data if entry["Validity"] == 0]
+                new_not_valid_entries = random.choices(not_valid_entries, k=num_new_entries)
+
+                # Add the new entries to the data
+                self.data += new_not_valid_entries
+
+            # Further augment the data by paraphrasing the conclusion
+            augmenting_factor = 1
+            new_data = augment_data(self.data, augmenting_factor, task)
+            self.data += new_data
+
+        # Shuffle the data
+        random.shuffle(self.data)
+
+        # Get the sentences and labels
+        # TODO: Try without special tokens
+        self.sentences = [
+            f"{TOPIC_TOKEN} {entry['Topic']} {PREMISE_TOKEN} {entry['Premise']} {CONCLUSION_TOKEN} {entry['Conclusion']}".lower()
+            for entry in self.data
+        ]
+        self.labels = [entry[task] for entry in self.data]
 
         # Get the vocab
         self.vocab = self.get_vocab()
@@ -218,7 +239,8 @@ class ClassificationCollator:
         }
 
 
-if __name__ == "__main__":#
+if __name__ == "__main__":
+    print("Device:", device)
 
     text = "This is a test sentence, which was written in the north of Bielefeld, a mid-sized city in the north-west of Germany."
     print(paraphrase(text))
