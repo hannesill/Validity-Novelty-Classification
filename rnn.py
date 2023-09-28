@@ -157,9 +157,9 @@ if __name__ == "__main__":
         for batch in dataloader_test:
             sentences = batch["sentences"].to(device)
             outputs = model(sentences)
-            preds.append((outputs > 0.5).long())
+            preds.append((outputs > 0.5).long().cpu().numpy())
 
-        test_predictions.append(preds)
+        test_predictions.append(np.concatenate(preds))
 
     # Save the predictions to a csv file with the topic, premise, conclusion and predictions
     print("Saving predictions...")
