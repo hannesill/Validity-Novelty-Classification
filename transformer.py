@@ -71,6 +71,8 @@ if __name__ == "__main__":
         evaluation_strategy="epoch"
     )
 
+    test_predictions = []
+
     # Preprocess data and train models for each task separately
     print("Training models...")
     for task in ["Validity", "Novelty"]:
@@ -152,5 +154,29 @@ if __name__ == "__main__":
         # Calculate and print the accuracy and F1 score
         results = trainer.evaluate(transformer_dataset_test)
         print(f"F1 score for {task}:", results["eval_f1"])
+
+        # Predict the labels of the test set
+        predictions = trainer.predict(transformer_dataset_test)
+        predictions = np.argmax(predictions.predictions, axis=1)
+
+        # Save the predictions
+        test_predictions.append(predictions)
+
+    # Save the predictions to a csv file with the topic, premise, conclusion and predictions
+    print("Saving predictions...")
+    # Convert predictions of 0 to -1
+    test_predictions[0][test_predictions[0] == 0] = -1
+
+    dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
+    with open(f"results/predictions_{timestamp}.csv", "w") as f:
+        f.write("Topic, Premise, Conclusion, Validity, Novelty\n")
+        for i in range(len(dataset_test)):
+            f.write(f"{dataset_test.data[i]['Topic']}, {dataset_test.data[i]['Premise']}, {dataset_test.data[i]['Conclusion']}, "
+                    f"{test_predictions[0][i]}, {test_predictions[1][i]}\n")
+
+
+
+
+
 
 
