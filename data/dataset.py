@@ -105,8 +105,9 @@ class ClassificationDataset(Dataset):
             # Oversample not novel entries
             if task == "Novelty":
                 # Calculate the number of novel sentences to create
+                num_not_novel_entries = len([entry for entry in self.data if entry[task] == 0])
                 num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
-                num_new_entries = len(self.data) - num_novel_entries
+                num_new_entries = num_not_novel_entries - num_novel_entries
 
                 # Oversample the novel entries
                 novel_entries = [entry for entry in self.data if entry[task] == 1]
@@ -118,8 +119,9 @@ class ClassificationDataset(Dataset):
             # Oversample the invalid entries
             elif task == "Validity":
                 # Calculate the number of invalid sentences to create
+                num_valid_entries = len([entry for entry in self.data if entry[task] == 1])
                 num_invalid_entries = len([entry for entry in self.data if entry[task] == 0])
-                num_new_entries = len(self.data) - num_invalid_entries
+                num_new_entries = num_valid_entries - num_invalid_entries
 
                 # Oversample the invalid entries
                 invalid_entries = [entry for entry in self.data if entry[task] == 0]
