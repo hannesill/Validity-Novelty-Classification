@@ -1,4 +1,7 @@
+import csv
 import random
+from datetime import datetime
+
 import numpy as np
 from data.dataset import ClassificationDataset, ClassificationCollator
 import torch
@@ -79,8 +82,13 @@ if __name__ == "__main__":
     eval_every = 1
     learning_rate = 0.01
 
+    # Get timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
     # Create loss function
     criterion = torch.nn.BCELoss()
+
+    test_predictions = []
 
     # Train model for each task
     print("Training model...")
@@ -142,3 +150,29 @@ if __name__ == "__main__":
         model.eval()
         dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, collate_fn=collator)
         evaluate_model(model, dataloader_test)
+
+        # Predict the labels of the test set
+        print("Predicting labels...")
+        preds = []
+        for batch in dataloader_test:
+            sentences = batch["sentences"].to(device)
+            outputs = model(sentences)
+            preds.append((outputs > 0.5).long())
+
+        test_predictions.append(preds)
+
+    # Save the predictions to a csv file with the topic, premise, conclusion and predictions
+    print("Saving predictions...")
+    # Convert predictions of 0 to -1
+    test_predictions[0][test_predictions[0] == 0] = -1
+    test_predictions[1][test_predictions[1] == 0] = -1
+
+    dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
+
+    with open(f"results/predictions_{timestamp}.csv", "w", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["topic", "Premise", "Conclusion", "predicted validity", "predicted novelty"])
+        for i in range(len(dataset_test)):
+            writer.writerow(
+                [dataset_test.data[i]['Topic'], dataset_test.data[i]['Premise'], dataset_test.data[i]['Conclusion'],
+                 test_predictions[0][i], test_predictions[1][i]])
