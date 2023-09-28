@@ -138,15 +138,29 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_novel_entries
 
-            # Filter out samples with confidence label of "majority"
+            # Filter out samples with confidence label of "majority", oversample minority class, and augment the data
             elif task == "Validity":
+                # Filter out
                 self.data = [entry for entry in self.data if entry["Confidence"] != "majority"]
 
-            if augment:
-                print("Augmenting data...")
+                # Oversample the minority class
+                num_valid_entries = len([entry for entry in self.data if entry[task] == 1])
+                num_invalid_entries = len(self.data) - num_valid_entries
+                if num_valid_entries > num_invalid_entries:
+                    # Oversample the invalid entries
+                    invalid_entries = [entry for entry in self.data if entry[task] == 0]
+                    new_invalid_entries = random.choices(invalid_entries, k=num_valid_entries - num_invalid_entries)
+                    self.data += new_invalid_entries
+                elif num_invalid_entries > num_valid_entries:
+                    # Oversample the valid entries
+                    valid_entries = [entry for entry in self.data if entry[task] == 1]
+                    new_valid_entries = random.choices(valid_entries, k=num_invalid_entries - num_valid_entries)
+                    self.data += new_valid_entries
 
+                # Augment the data
+                print("Augmenting data...")
                 # Further augment the data by paraphrasing the conclusion
-                augmenting_factor = 0.1
+                augmenting_factor = 0.5
                 new_data = augment_data(self.data, augmenting_factor, task)
                 self.data += new_data
 
@@ -155,8 +169,8 @@ class ClassificationDataset(Dataset):
                 df = pd.DataFrame(self.data)
                 df.to_csv(augmented_file_name, index=False)
 
-                # Shuffle the data
-                random.shuffle(self.data)
+            # Shuffle the data
+            random.shuffle(self.data)
 
         # Get the sentences and labels
         self.sentences = [

@@ -36,12 +36,11 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs to train the model")
     parser.add_argument("--preprocess", action="store_true", help="Whether to preprocess the data or not")
     parser.add_argument("--augment", action="store_true", help="Whether to augment the data or not")
-    parser.add_argument("--max_length", type=int, default=200, help="Maximum length of the sentences")
     args = parser.parse_args()
 
     # Hyperparameters
     EPOCHS = args.epochs
-    MAX_LENGTH = args.max_length
+    MAX_LENGTH = 200
 
     # Set random seeds and device
     random.seed(0)
@@ -131,10 +130,6 @@ if __name__ == "__main__":
         )
 
         trainer.train()
-
-        # # Save the model
-        # trainer.model.eval()
-        # trainer.save_model(f"models/transformer-baseline_{task}_{timestamp}.pt")
 
         # Test the model on the test set
         print("Testing model")
