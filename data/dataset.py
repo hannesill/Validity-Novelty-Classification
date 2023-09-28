@@ -125,6 +125,8 @@ class ClassificationDataset(Dataset):
             self.data.append(entry)
 
         if preprocess:
+            # Filter out samples with confidence label of "majority"
+            self.data = [entry for entry in self.data if entry["Confidence"] != "majority"]
             # Oversample not novel entries
             if task == "Novelty":
                 # Calculate the number of novel sentences to create
@@ -138,36 +140,21 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_novel_entries
 
-            # Filter out samples with confidence label of "majority", oversample minority class, and augment the data
-            elif task == "Validity":
-                # Filter out
-                self.data = [entry for entry in self.data if entry["Confidence"] != "majority"]
-
-                # Oversample the minority class
-                num_valid_entries = len([entry for entry in self.data if entry[task] == 1])
-                num_invalid_entries = len(self.data) - num_valid_entries
-                if num_valid_entries > num_invalid_entries:
-                    # Oversample the invalid entries
-                    invalid_entries = [entry for entry in self.data if entry[task] == 0]
-                    new_invalid_entries = random.choices(invalid_entries, k=num_valid_entries - num_invalid_entries)
-                    self.data += new_invalid_entries
-                elif num_invalid_entries > num_valid_entries:
-                    # Oversample the valid entries
-                    valid_entries = [entry for entry in self.data if entry[task] == 1]
-                    new_valid_entries = random.choices(valid_entries, k=num_invalid_entries - num_valid_entries)
-                    self.data += new_valid_entries
-
-                # Augment the data
-                print("Augmenting data...")
-                # Further augment the data by paraphrasing the conclusion
-                augmenting_factor = 0.5
-                new_data = augment_data(self.data, augmenting_factor, task)
-                self.data += new_data
-
-                # Save the augmented data
-                augmented_file_name = file_name.replace(".csv", f"_{task}_augmented_{augmenting_factor}.csv")
-                df = pd.DataFrame(self.data)
-                df.to_csv(augmented_file_name, index=False)
+            # # Filter out samples with confidence label of "majority", oversample minority class, and augment the data
+            # elif task == "Validity":
+            #     # Oversample the minority class
+            #     num_valid_entries = len([entry for entry in self.data if entry[task] == 1])
+            #     num_invalid_entries = len(self.data) - num_valid_entries
+            #     if num_valid_entries > num_invalid_entries:
+            #         # Oversample the invalid entries
+            #         invalid_entries = [entry for entry in self.data if entry[task] == 0]
+            #         new_invalid_entries = random.choices(invalid_entries, k=num_valid_entries - num_invalid_entries)
+            #         self.data += new_invalid_entries
+            #     elif num_invalid_entries > num_valid_entries:
+            #         # Oversample the valid entries
+            #         valid_entries = [entry for entry in self.data if entry[task] == 1]
+            #         new_valid_entries = random.choices(valid_entries, k=num_invalid_entries - num_valid_entries)
+            #         self.data += new_valid_entries
 
             # Shuffle the data
             random.shuffle(self.data)
