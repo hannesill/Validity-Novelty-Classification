@@ -1,11 +1,15 @@
+import random
+import numpy as np
 from data.dataset import ClassificationDataset, ClassificationCollator
 import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
+from tqdm import tqdm
+from sklearn.metrics import f1_score
 
 
 class RNN_Model(nn.Module):
-    def __init__(self, vocab_size, emb_dim, hidden_dim, pad_idx, num_layers=8, output_dim=2):
+    def __init__(self, vocab_size, emb_dim, hidden_dim, pad_idx, num_layers=8, output_dim=1):
         super(RNN_Model, self).__init__()
 
         self.vocab_size = vocab_size
@@ -32,26 +36,10 @@ class RNN_Model(nn.Module):
         # Pass the final hidden state through the linear layer for classification
         output = self.fc(final_hidden_state.squeeze(0))
 
-        return torch.sigmoid(output)
-
-
-
-def calc_f1_score(preds, labels):
-    # Calculate the number of true positives, false positives and false negatives
-    TP = ((preds == 1) & (labels == 1)).sum().item()
-    FP = ((preds == 1) & (labels == 0)).sum().item()
-    FN = ((preds == 0) & (labels == 1)).sum().item()
-
-    # Calculate precision, recall and F1 score
-    precision = TP / (TP + FP) if TP + FP != 0 else 0
-    recall = TP / (TP + FN) if TP + FN != 0 else 0
-    f1_score = 2 * precision * recall / (precision + recall) if precision + recall != 0 else 0
-
-    return f1_score
+        return torch.sigmoid(output.squeeze(1))
 
 
 def evaluate_model(model, dataloader_dev):
-    accuracies = []
     f1_scores = []
 
     for batch in dataloader_dev:
@@ -60,56 +48,27 @@ def evaluate_model(model, dataloader_dev):
 
         outputs = model(sentences)
 
-        # Separate out the predictions
-        validity_preds = outputs[:, 0]
-        novelty_preds = outputs[:, 1]
-
         # Binarize the predictions
-        validity_preds = (validity_preds > 0.5).long()
-        novelty_preds = (novelty_preds > 0.5).long()
+        preds = (outputs > 0.5).long()
 
-        # Separate out the labels
-        validity_labels = labels[:, 0]
-        novelty_labels = labels[:, 1]
-
-        # Compute accuracy
-        batch_validity_accuracy = (validity_preds == validity_labels).sum().item() / len(validity_preds)
-        batch_novelty_accuracy = (novelty_preds == novelty_labels).sum().item() / len(novelty_preds)
-
-        # Compute F1 Scores
-        batch_f1_validity = calc_f1_score(validity_preds, validity_labels)
-        batch_f1_novelty = calc_f1_score(novelty_preds, novelty_labels)
+        # Compute f1
+        batch_f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average="macro")
 
         # Append to list
-        accuracies.append((batch_validity_accuracy, batch_novelty_accuracy))
-        f1_scores.append((batch_f1_validity, batch_f1_novelty))
+        f1_scores.append(batch_f1)
 
     # Compute overall accuracies and F1 scores
-    validity_accuracy = sum([x[0] for x in accuracies]) / len(accuracies)
-    novelty_accuracy = sum([x[1] for x in accuracies]) / len(accuracies)
-    validity_f1 = sum([x[0] for x in f1_scores]) / len(f1_scores)
-    novelty_f1 = sum([x[1] for x in f1_scores]) / len(f1_scores)
-    overall_accuracy = sum([x[0] + x[1] for x in accuracies]) / 2 * len(accuracies)
-    overall_f1 = sum([x[0] + x[1] for x in f1_scores]) / 2 * len(f1_scores)
+    overall_f1 = sum(f1_scores) / len(f1_scores)
 
     # Print Results
-    print(f"Accuracy for Validity: {validity_accuracy:.4f}")
-    print(f"Accuracy for Novelty: {novelty_accuracy:.4f}")
-    print(f"F1 score for Validity: {validity_f1:.4f}")
-    print(f"F1 score for Novelty: {novelty_f1:.4f}")
-    print(f"Overall Accuracy: {overall_accuracy:.4f}")
-    print(f"Overall F1 score: {overall_f1:.4f}")
+    print(f"F1 score: {overall_f1:.4f}")
 
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(42)
-
-    # Load dataset
-    print("Loading dataset...")
-    dataset_train = ClassificationDataset("data/TaskA_train.csv", task="Validity")
-    dataset_dev = ClassificationDataset("data/TaskA_dev.csv", task="Validity")
-    dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     # Hyperparameters
     batch_size = 64
@@ -118,59 +77,68 @@ if __name__ == "__main__":
     num_layers = 3
     num_epochs = 3
     eval_every = 1
-    learning_rate = 0.001
-    pad_idx = dataset_train.vocab["<PAD>"]
-
-    # Create dataloader
-    collator = ClassificationCollator(dataset_train.vocab)
-    dataloader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collator)
-
-    # Create model
-    model = RNN_Model(len(dataset_train.vocab), emb_dim, hidden_dim, pad_idx, num_layers=num_layers).to(device)
-
-    # Create optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    learning_rate = 0.01
 
     # Create loss function
     criterion = torch.nn.BCELoss()
 
-    # Train model
-    for epoch in range(num_epochs):
-        model.train()
-        total_loss = 0
+    # Train model for each task
+    print("Training model...")
+    for task in ["Validity", "Novelty"]:
+        print(f"Task: {task}")
 
-        # Iterate over each batch
-        for batch in dataloader_train:
-            optimizer.zero_grad()
+        # Load dataset
+        print("Loading dataset...")
+        dataset_train = ClassificationDataset("data/TaskA_train.csv", task=task)
+        dataset_dev = ClassificationDataset("data/TaskA_dev.csv", task=task)
+        dataset_test = ClassificationDataset("data/TaskA_test.csv", task=task)
+        pad_idx = dataset_train.vocab["<PAD>"]
 
-            # Unpack the batch and send to device
-            sentences = batch["sentences"].to(device)
-            labels = batch["labels"].to(device)
+        # Create dataloader
+        collator = ClassificationCollator(dataset_train.vocab)
+        dataloader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collator)
 
-            # Forward pass
-            outputs = model(sentences)
+        # Create model
+        model = RNN_Model(len(dataset_train.vocab), emb_dim, hidden_dim, pad_idx, num_layers=num_layers).to(device)
 
-            # Compute loss
-            loss = criterion(outputs, labels)
-            loss.backward()
-            total_loss += loss.item()
+        # Create optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-            optimizer.step()
+        # Train model
+        for epoch in range(num_epochs):
+            print(f"Epoch {epoch + 1} / {num_epochs} =======================> Training...")
+            model.train()
+            total_loss = 0
 
-        print(f"Epoch {epoch + 1} / {num_epochs} =======================> loss: {total_loss:.4f}")
+            # Iterate over each batch
+            for batch in tqdm(dataloader_train):
+                optimizer.zero_grad()
 
-        if (epoch + 1) % eval_every == 0:
-            # Validate model
-            print("Evaluating model...")
-            model.eval()
-            dataloader_dev = DataLoader(dataset_dev, batch_size=batch_size, shuffle=False, collate_fn=collator)
-            evaluate_model(model, dataloader_dev)
+                # Unpack the batch and send to device
+                sentences = batch["sentences"].to(device)
+                labels = batch["labels"].to(device)
 
-    print("Training complete! =======================> Saving model...")
-    # torch.save(model.state_dict(), "model.pt")
+                # Forward pass
+                outputs = model(sentences)
 
-    # Test model
-    print("Testing model...")
-    model.eval()
-    dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, collate_fn=collator)
-    evaluate_model(model, dataloader_test)
+                # Compute loss
+                loss = criterion(outputs, labels)
+                loss.backward()
+                total_loss += loss.item()
+
+                optimizer.step()
+
+            print(f"Epoch {epoch + 1} / {num_epochs} =======================> loss: {total_loss:.4f}")
+
+            if (epoch + 1) % eval_every == 0:
+                # Validate model
+                print("Evaluating model...")
+                model.eval()
+                dataloader_dev = DataLoader(dataset_dev, batch_size=batch_size, shuffle=False, collate_fn=collator)
+                evaluate_model(model, dataloader_dev)
+
+        # Test model
+        print("Testing model...")
+        model.eval()
+        dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, collate_fn=collator)
+        evaluate_model(model, dataloader_test)
