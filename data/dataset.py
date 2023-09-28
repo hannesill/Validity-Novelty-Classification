@@ -66,31 +66,6 @@ def augment_data(data, augmenting_factor, task):
     return new_entries
 
 
-def create_novel_entries(data, num_new_entries):
-    # Choose random other conclusion for each sentence's topic and premise
-    novel_entries = []
-    for i in range(0, num_new_entries):
-        # Choose a random sample
-        sample = random.choice(data)
-        conclusion = sample["Conclusion"]
-        # Choose a random conclusion different from the current conclusion
-        random_conclusion = random.choice(data)["Conclusion"]
-        while random_conclusion == conclusion:
-            random_conclusion = random.choice(data)["Conclusion"]
-
-        novel_entry = {
-            "Topic": sample["Topic"],
-            "Premise": sample["Premise"],
-            "Conclusion": random_conclusion,
-            "Novelty": sample["Novelty"],
-            "Confidence": sample["Confidence"]
-        }
-
-        novel_entries.append(novel_entry)
-
-    return novel_entries
-
-
 class ClassificationDataset(Dataset):
     def __init__(self, file_name, task, preprocess=False, augment=False):
 
@@ -140,21 +115,18 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_novel_entries
 
-            # # Filter out samples with confidence label of "majority", oversample minority class, and augment the data
-            # elif task == "Validity":
-            #     # Oversample the minority class
-            #     num_valid_entries = len([entry for entry in self.data if entry[task] == 1])
-            #     num_invalid_entries = len(self.data) - num_valid_entries
-            #     if num_valid_entries > num_invalid_entries:
-            #         # Oversample the invalid entries
-            #         invalid_entries = [entry for entry in self.data if entry[task] == 0]
-            #         new_invalid_entries = random.choices(invalid_entries, k=num_valid_entries - num_invalid_entries)
-            #         self.data += new_invalid_entries
-            #     elif num_invalid_entries > num_valid_entries:
-            #         # Oversample the valid entries
-            #         valid_entries = [entry for entry in self.data if entry[task] == 1]
-            #         new_valid_entries = random.choices(valid_entries, k=num_invalid_entries - num_valid_entries)
-            #         self.data += new_valid_entries
+            # Oversample the invalid entries
+            elif task == "Validity":
+                # Calculate the number of invalid sentences to create
+                num_invalid_entries = len([entry for entry in self.data if entry[task] == 0])
+                num_new_entries = len(self.data) - num_invalid_entries
+
+                # Oversample the invalid entries
+                invalid_entries = [entry for entry in self.data if entry[task] == 0]
+                new_invalid_entries = random.choices(invalid_entries, k=num_new_entries)
+
+                # Add the new entries to the data
+                self.data += new_invalid_entries
 
             # Shuffle the data
             random.shuffle(self.data)
