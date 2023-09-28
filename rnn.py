@@ -77,7 +77,7 @@ if __name__ == "__main__":
     batch_size = 64
     emb_dim = 64
     hidden_dim = 64
-    num_layers = 3
+    num_layers = 8
     num_epochs = 3
     eval_every = 1
     learning_rate = 0.01
@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
 
-    with open(f"results/predictions_{timestamp}.csv", "w", newline='') as f:
+    with open(f"results/predictions_RNN_{timestamp}.csv", "w", newline='') as f:
         writer = csv.writer(f)
         writer.writerow(["topic", "Premise", "Conclusion", "predicted validity", "predicted novelty"])
         for i in range(len(dataset_test)):

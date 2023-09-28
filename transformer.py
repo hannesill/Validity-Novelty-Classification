@@ -54,7 +54,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Device:", device)
 
-    timestamp = datetime.datetime.now().strftime("%m%d-%H%M%S")
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
     # Add special tokens
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
 
-    with open(f"results/predictions_{timestamp}.csv", "w", newline='') as f:
+    with open(f"results/predictions_transformer_{timestamp}.csv", "w", newline='') as f:
         writer = csv.writer(f)
         writer.writerow(["topic", "Premise", "Conclusion", "predicted validity", "predicted novelty"])
         for i in range(len(dataset_test)):
