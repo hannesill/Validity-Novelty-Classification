@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     # Hyperparameters
     EPOCHS = args.epochs
-    MAX_LENGTH = 500
+    MAX_LENGTH = 200
 
     # Set random seeds and device
     random.seed(0)
