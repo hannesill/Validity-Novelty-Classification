@@ -130,6 +130,10 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_invalid_entries
 
+            # Augment the data
+            if augment:
+                self.data += augment_data(self.data, augmenting_factor=1, task=task)
+
             # Shuffle the data
             random.shuffle(self.data)
 
