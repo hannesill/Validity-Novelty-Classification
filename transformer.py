@@ -166,6 +166,7 @@ if __name__ == "__main__":
     print("Saving predictions...")
     # Convert predictions of 0 to -1
     test_predictions[0][test_predictions[0] == 0] = -1
+    test_predictions[1][test_predictions[1] == 0] = -1
 
     dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
     with open(f"results/predictions_{timestamp}.csv", "w") as f:
