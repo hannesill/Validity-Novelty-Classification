@@ -38,10 +38,6 @@ if __name__ == "__main__":
     parser.add_argument("--augment", action="store_true", help="Whether to augment the data or not")
     args = parser.parse_args()
 
-    # Check arguments
-    assert args.filter in ["defeasible", "majority", "confident"], \
-        "Invalid filter keyword. Valid options are: defeasible, majority, confident"
-
     # Hyperparameters
     MAX_LENGTH = 500
     EPOCHS = args.epochs
