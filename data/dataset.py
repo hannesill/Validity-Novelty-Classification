@@ -92,22 +92,11 @@ def create_novel_entries(data, num_new_entries):
 
 
 class ClassificationDataset(Dataset):
-    def __init__(self, file_name, task, augment=False, balance=False, filter_out="defeasible"):
+    def __init__(self, file_name, task, preprocess=False, augment=False):
 
         # Check if the task is valid
         if task not in ["Validity", "Novelty"]:
             raise ValueError("Invalid task. Task must be either 'Validity' or 'Novelty'.")
-
-        # Check if the filter_out is valid
-        if filter_out not in ["defeasible", "majority", "confident"]:
-            raise ValueError("Invalid filter_out. filter_out must be either 'defeasible' or 'majority' or 'confident.")
-        # Create a list of filters
-        filters = []
-        for filter_keyword in ["defeasible", "majority", "confident"]:
-            filters.append(filter_keyword)
-            if filter_keyword == filter_out:
-                break
-        print("Filters:", filters)
 
         # Get the data from the csv file
         df = pd.read_csv(file_name, encoding="utf8", sep=",")
@@ -124,22 +113,19 @@ class ClassificationDataset(Dataset):
             for _, row in df.iterrows()
         ]
 
-        # Filter the data and convert -1 labels to 0
+        # Filter out defeasible samples and convert -1 labels to 0
         self.data = []
         for entry in orig_data:
-            # Skip the entry if it has a confidence score in the filters and the task is Validity
-            # else skip if the entry is defeasible
-            if (entry["Confidence"] in filters and task == "Validity") or (entry["Confidence"] == "defeasible"):
+            # Filter out defeasible samples
+            if entry[task] == 0:
                 continue
-
             # Convert label
             entry[task] = 0 if entry[task] == -1 else 1
 
             self.data.append(entry)
 
-        if balance:
-            # Balance the data
-            # By oversampling not novel entries
+        if preprocess:
+            # Oversample not novel entries
             if task == "Novelty":
                 # Calculate the number of novel sentences to create
                 num_novel_entries = len([entry for entry in self.data if entry[task] == 1])
@@ -152,21 +138,25 @@ class ClassificationDataset(Dataset):
                 # Add the new entries to the data
                 self.data += new_novel_entries
 
-        if augment:
-            print("Augmenting data...")
+            # Filter out samples with confidence label of "majority"
+            elif task == "Validity":
+                self.data = [entry for entry in self.data if entry["Confidence"] != "majority"]
 
-            # Further augment the data by paraphrasing the conclusion
-            augmenting_factor = 0.1
-            new_data = augment_data(self.data, augmenting_factor, task)
-            self.data += new_data
+            if augment:
+                print("Augmenting data...")
 
-            # Save the augmented data
-            augmented_file_name = file_name.replace(".csv", f"_{task}_augmented_{augmenting_factor}.csv")
-            df = pd.DataFrame(self.data)
-            df.to_csv(augmented_file_name, index=False)
+                # Further augment the data by paraphrasing the conclusion
+                augmenting_factor = 0.1
+                new_data = augment_data(self.data, augmenting_factor, task)
+                self.data += new_data
 
-        # Shuffle the data
-        random.shuffle(self.data)
+                # Save the augmented data
+                augmented_file_name = file_name.replace(".csv", f"_{task}_augmented_{augmenting_factor}.csv")
+                df = pd.DataFrame(self.data)
+                df.to_csv(augmented_file_name, index=False)
+
+                # Shuffle the data
+                random.shuffle(self.data)
 
         # Get the sentences and labels
         self.sentences = [

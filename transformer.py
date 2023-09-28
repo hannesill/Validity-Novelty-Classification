@@ -1,8 +1,7 @@
 import argparse
 import datetime
 import random
-
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import f1_score
 from data.dataset import ClassificationDataset, TOPIC_TOKEN, PREMISE_TOKEN, CONCLUSION_TOKEN
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments, EvalPrediction
 import torch
@@ -35,9 +34,8 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs to train the model")
-    parser.add_argument("--filter", type=str, default="defeasible", help="Filter to use for the data")
+    parser.add_argument("--preprocess", action="store_true", help="Whether to preprocess the data or not")
     parser.add_argument("--augment", action="store_true", help="Whether to augment the data or not")
-    parser.add_argument("--balance", action="store_true", help="Whether to balance the data or not")
     args = parser.parse_args()
 
     # Check arguments
@@ -45,7 +43,7 @@ if __name__ == "__main__":
         "Invalid filter keyword. Valid options are: defeasible, majority, confident"
 
     # Hyperparameters
-    MAX_LENGTH = 200
+    MAX_LENGTH = 500
     EPOCHS = args.epochs
 
     # Set random seeds and device
@@ -86,9 +84,8 @@ if __name__ == "__main__":
         print("Loading data...")
         dataset_train = ClassificationDataset("data/TaskA_train.csv",
                                               task=task,
-                                              augment=args.augment,
-                                              balance=args.balance,
-                                              filter_out=args.filter)
+                                              preprocess=args.preprocess,
+                                              augment=args.augment)
         dataset_valid = ClassificationDataset("data/TaskA_dev.csv", task=task)
         print("Train size:", len(dataset_train))
         print("Valid size:", len(dataset_valid))
