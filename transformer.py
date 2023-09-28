@@ -173,7 +173,7 @@ if __name__ == "__main__":
 
     with open(f"results/predictions_{timestamp}.csv", "w", newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(["topic", "Premise", "Conclusion", "Validity", "Novelty"])
+        writer.writerow(["topic", "Premise", "Conclusion", "predicted validity", "predicted novelty"])
         for i in range(len(dataset_test)):
             writer.writerow(
                 [dataset_test.data[i]['Topic'], dataset_test.data[i]['Premise'], dataset_test.data[i]['Conclusion'],
