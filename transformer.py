@@ -7,6 +7,7 @@ from transformers import RobertaTokenizer, RobertaForSequenceClassification, Tra
 import torch
 from torch.utils.data import Dataset
 import numpy as np
+import csv
 
 
 class TransformerDataset(Dataset):
@@ -169,11 +170,14 @@ if __name__ == "__main__":
     test_predictions[1][test_predictions[1] == 0] = -1
 
     dataset_test = ClassificationDataset("data/TaskA_test.csv", task="Validity")
-    with open(f"results/predictions_{timestamp}.csv", "w") as f:
-        f.write("Topic, Premise, Conclusion, Validity, Novelty\n")
+
+    with open(f"results/predictions_{timestamp}.csv", "w", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Topic", "Premise", "Conclusion", "Validity", "Novelty"])
         for i in range(len(dataset_test)):
-            f.write(f"{dataset_test.data[i]['Topic']}, {dataset_test.data[i]['Premise']}, {dataset_test.data[i]['Conclusion']}, "
-                    f"{test_predictions[0][i]}, {test_predictions[1][i]}\n")
+            writer.writerow(
+                [dataset_test.data[i]['Topic'], dataset_test.data[i]['Premise'], dataset_test.data[i]['Conclusion'],
+                 test_predictions[0][i], test_predictions[1][i]])
 
 
 
